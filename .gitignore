@@ -1,0 +1,53 @@
+# Ignora os dados
+data/raw/*
+data/processed/*
+
+# Mantém as pastas no Git
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Arquivos grandes de dados
+*.csv
+*.parquet
+*.json
+*.jsonl
+*.avro
+*.orc
+
+# Saídas do Spark
+_SUCCESS
+*.crc
+.part-*
+part-*
+
+# Checkpoints e metadados do Jupyter
+.ipynb_checkpoints/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ambientes virtuais Python
+.venv/
+venv/
+env/
+
+# Configurações locais
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Arquivos temporários
+tmp/
+temp/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
