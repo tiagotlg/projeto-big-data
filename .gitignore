@@ -8,6 +8,7 @@ models/*
 # Mantém as pastas no Git
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+!models/.gitkeep
 
 # Arquivos grandes de dados
 *.csv
