@@ -2,6 +2,9 @@
 data/raw/*
 data/processed/*
 
+# Ignora os modelos
+models/*
+
 # Mantém as pastas no Git
 !data/raw/.gitkeep
 !data/processed/.gitkeep
