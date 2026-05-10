@@ -2,68 +2,43 @@
 
 Projeto desenvolvido para a disciplina de **Big Data**, com o objetivo de aplicar técnicas de processamento distribuído, análise exploratória de dados, pré-processamento e modelagem preditiva utilizando o ecossistema Apache Spark.
 
-O projeto utiliza dados meteorológicos horários da região Sudeste do Brasil, obtidos a partir do Kaggle, com foco na análise da variação da temperatura ao longo dos anos e na preparação de uma base para modelos de aprendizado de máquina.
+O projeto utiliza dados meteorológicos horários do estado de São Paulo, obtidos a partir do Kaggle, com foco na previsão de temperatura futura usando três modelos de aprendizado de máquina.
 
 ## Objetivo do Projeto
 
 O objetivo principal é construir um fluxo de Big Data capaz de:
 
-- Carregar e processar um dataset meteorológico de grande volume.
+- Carregar e processar um dataset meteorológico de grande volume (> 1 GB).
 - Converter arquivos CSV para o formato Parquet.
 - Realizar análise exploratória dos dados utilizando PySpark.
 - Tratar valores ausentes, inconsistências e outliers.
-- Preparar uma base limpa para modelos preditivos.
-- Treinar modelos de regressão para previsão da temperatura do ar.
+- Criar features temporais de defasagem e janelas móveis para contexto climático.
+- Treinar três modelos preditivos e comparar seus desempenhos.
 
-A variável-alvo considerada no projeto é a **temperatura do ar**, representada originalmente pela coluna:
+### Alvos de Previsão
 
-```text
-TEMPERATURA DO AR - BULBO SECO, HORARIA (°C)
-```
+Cada modelo é treinado para dois objetivos distintos:
 
-Após o tratamento, essa variável é renomeada para:
-
-```text
-temperatura
-```
+| Alvo | Descrição |
+|---|---|
+| `temperatura_amanha` | Temperatura média do dia seguinte (°C) |
+| `temperatura_media_proximos_7_dias` | Temperatura média dos próximos 7 dias (°C) |
 
 ## Dataset Utilizado
 
-O dataset utilizado foi obtido no Kaggle:
-
-**Hourly Weather Surface Brazil - Southeast Region**  
+**Hourly Weather Surface Brazil — Southeast Region**  
 Disponível em: https://www.kaggle.com/datasets/PROPPG-PPG/hourly-weather-surface-brazil-southeast-region
 
-A base contém registros meteorológicos horários da região Sudeste do Brasil, incluindo informações como:
-
-- Data e hora da medição
-- Região e estado
-- Estação meteorológica
-- Temperatura do ar
-- Temperatura máxima e mínima
-- Temperatura do ponto de orvalho
-- Umidade relativa do ar
-- Pressão atmosférica
-- Precipitação
-- Radiação global
-- Velocidade, rajada e direção do vento
-
-Para reduzir o custo computacional local e manter o foco temporal do projeto, a análise foi concentrada nos dados do estado de **São Paulo (SP)**.
+A base contém registros meteorológicos horários da região Sudeste do Brasil. Para reduzir o custo computacional e manter o foco do projeto, a análise foi concentrada nos dados do estado de **São Paulo (SP)**.
 
 ## Tecnologias Utilizadas
 
-- Docker
-- Jupyter Notebook
-- Apache Spark
-- PySpark
+- Docker (`jupyter/pyspark-notebook`)
+- Apache Spark / PySpark
+- PySpark MLlib
 - Parquet
+- Plotly
 - Python
-
-O projeto foi desenvolvido utilizando a imagem Docker:
-
-```bash
-jupyter/pyspark-notebook
-```
 
 ## Estrutura do Projeto
 
@@ -74,27 +49,124 @@ jupyter/pyspark-notebook
 │   │   └── arquivos_csv_originais
 │   └── processed/
 │       ├── weather_sp_parquet/
-│       └── weather_sp_preprocessado/
+│       ├── weather_sp_preprocessado/
+│       ├── weather_sp_dataset_amanha/
+│       ├── weather_sp_dataset_semana/
+│       ├── weather_sp_amanha_train/
+│       ├── weather_sp_amanha_test/
+│       ├── weather_sp_semana_train/
+│       └── weather_sp_semana_test/
+│
+├── models/
+│   ├── random_forest_amanha/
+│   ├── random_forest_semana/
+│   ├── linear_regression_amanha/
+│   ├── linear_regression_semana/
+│   ├── mlp_faixa_termica_amanha/
+│   └── mlp_faixa_termica_semana/
 │
 ├── notebooks/
 │   ├── 00_csv_to_parquet.ipynb
 │   ├── 01_eda_weather.ipynb
-│   └── 02_preprocessamento.ipynb
+│   ├── 02_preprocessamento.ipynb
+│   ├── 03_modelagem_random_forest.ipynb
+│   ├── 04_modelo_linear_regression.ipynb
+│   └── 05_modelo_redes_neurais.ipynb
 │
 ├── .gitignore
 └── README.md
 ```
 
+## Descrição dos Notebooks
+
+### 00_csv_to_parquet.ipynb
+
+Converte os arquivos CSV originais para Parquet, filtrando apenas os dados do estado de São Paulo.
+
+### 01_eda_weather.ipynb
+
+Análise exploratória dos dados com PySpark. Cobre estatísticas descritivas, valores nulos, análise de temperatura por ano/mês/hora, correlação entre variáveis e análise por estação meteorológica. Desenvolvida inteiramente com PySpark, sem bibliotecas externas de visualização.
+
+### 02_preprocessamento.ipynb
+
+Prepara a base para modelagem. As principais etapas são:
+
+- Normalização dos nomes das colunas e conversão de tipos.
+- Tratamento de valores sentinela (`-9999`) e remoção de outliers por IQR.
+- Criação de variáveis temporais (`ano`, `mes`, `dia`, `hora_num`).
+- Agregação diária por estação meteorológica.
+- Criação das colunas-alvo: `temperatura_amanha` e `temperatura_media_proximos_7_dias`.
+- Criação de features de defasagem e janelas móveis (temperatura ontem, média 3 dias, média 7 dias, etc.).
+- Classificação de estações por `tipo_area`, `macro_regiao_sp` e `faixa_altitude`.
+- **Split temporal:** treino com anos anteriores a 2018, teste com 2018 em diante.
+- Imputação com mediana calculada exclusivamente no treino (sem data leakage).
+
+### 03_modelagem_random_forest.ipynb
+
+Treina dois modelos **Random Forest Regressor** (previsão de amanhã e dos próximos 7 dias).
+
+Avaliação com **MAE**, **RMSE** e **R²**. Análise da importância das variáveis e visualizações por tipo de área, macro região, mês e altitude com Plotly.
+
+### 04_modelo_linear_regression.ipynb
+
+Treina dois modelos **Linear Regression** com o mesmo par de alvos.
+
+Avaliação com **MAE**, **RMSE** e **R²**. Análise dos coeficientes do modelo e visualizações por tipo de área, macro região, mês e altitude com Plotly.
+
+### 05_modelo_redes_neurais.ipynb
+
+Treina dois modelos de **Redes Neurais** usando `MultilayerPerceptronClassifier` do MLlib.
+
+Como o MLlib possui rede neural nativa apenas para classificação, o alvo contínuo é convertido em quatro faixas térmicas calculadas pelos quartis da base de treino:
+
+| Classe | Categoria | Interpretação |
+|---:|---|---|
+| 0 | mais_fria | abaixo do Q1 |
+| 1 | amena_baixa | entre Q1 e Q2 |
+| 2 | amena_alta | entre Q2 e Q3 |
+| 3 | mais_quente | acima do Q3 |
+
+Arquitetura da rede: `[n_features → 32 → 16 → 4]`. As features são normalizadas com `StandardScaler` antes do treinamento.
+
+Avaliação com **Accuracy**, **F1-score**, **Weighted Precision**, **Weighted Recall** e matriz de confusão. Visualizações por tipo de área, macro região, mês e faixa de altitude com Plotly.
+
+## Split Temporal
+
+A separação treino/teste segue uma lógica temporal para evitar data leakage:
+
+- **Treino:** anos anteriores a 2018
+- **Teste:** anos de 2018 em diante
+
+A imputação de valores ausentes usa medianas calculadas exclusivamente na base de treino e aplicadas na base de teste.
+
+## Features Consideradas
+
+As features finais incluem variáveis meteorológicas, geográficas e temporais de defasagem:
+
+```text
+Temporais:
+  ano, mes, dia, hora_num
+
+Geográficas:
+  latitude, longitude, altitude, tipo_area_idx, macro_regiao_sp_idx, faixa_altitude_idx
+
+Meteorológicas:
+  umidade, umidade_maxima, umidade_minima
+  pressao, pressao_maxima, pressao_minima
+  precipitacao, radiacao
+  velocidade_vento, rajada_vento, direcao_vento
+
+Defasagem e janelas móveis (criadas no pré-processamento):
+  temp_media_ontem
+  temp_media_ultimos_3_dias
+  temp_media_ultimos_7_dias
+  umidade_media_ultimos_7_dias
+  precipitacao_acumulada_ultimos_7_dias
+```
+
 ## Observação sobre os Dados
 
 Os arquivos `.csv` e `.parquet` não são versionados no GitHub devido ao tamanho elevado da base.
-
-As pastas de dados são mantidas apenas para organização local:
-
-```text
-data/raw/
-data/processed/
-```
 
 O usuário deve baixar o dataset manualmente no Kaggle e colocar os arquivos CSV em:
 
@@ -117,7 +189,7 @@ Baixe o dataset no Kaggle:
 
 https://www.kaggle.com/datasets/PROPPG-PPG/hourly-weather-surface-brazil-southeast-region
 
-Depois coloque os arquivos CSV em:
+Coloque os arquivos CSV em:
 
 ```text
 data/raw/
@@ -137,133 +209,24 @@ No Linux ou macOS:
 docker run --name spark-weather-container -p 8888:8888 -p 4040:4040 -p 7077:7077 -v $(pwd):/home/jovyan/work jupyter/pyspark-notebook
 ```
 
-Após iniciar o container, acesse no navegador o link exibido no terminal, geralmente semelhante a:
+Acesse no navegador o link exibido no terminal:
 
 ```text
 http://127.0.0.1:8888/lab?token=...
 ```
 
-### 4. Executar os notebooks
-
-Execute os notebooks na seguinte ordem:
+### 4. Executar os notebooks em ordem
 
 ```text
 1. 00_csv_to_parquet.ipynb
 2. 01_eda_weather.ipynb
 3. 02_preprocessamento.ipynb
+4. 03_modelagem_random_forest.ipynb
+5. 04_modelo_linear_regression.ipynb
+6. 05_modelo_redes_neurais.ipynb
 ```
-
-## Descrição dos Notebooks
-
-### 00_csv_to_parquet.ipynb
-
-Este notebook realiza a primeira etapa do pipeline.
-
-Principais responsabilidades:
-
-- Ler os arquivos CSV originais.
-- Filtrar os dados do estado de São Paulo.
-- Converter a base para o formato Parquet.
-- Salvar a base processada em `data/processed/weather_sp_parquet`.
-
-O uso do formato Parquet melhora a performance de leitura e processamento no Spark, pois os dados passam a ser armazenados em formato colunar.
-
-### 01_eda_weather.ipynb
-
-Este notebook realiza a análise exploratória dos dados.
-
-Principais análises realizadas:
-
-- Visualização inicial da base.
-- Verificação do schema.
-- Contagem de linhas e colunas.
-- Análise de valores nulos.
-- Estatísticas descritivas.
-- Análise de temperatura por ano.
-- Análise de temperatura por mês.
-- Análise de temperatura por hora.
-- Análise por estação meteorológica.
-- Correlação entre variáveis meteorológicas.
-- Análise aproximada de quartis e outliers.
-
-Como restrição do projeto, a EDA foi desenvolvida utilizando apenas recursos do **PySpark**, sem bibliotecas externas de visualização.
-
-### 02_preprocessamento.ipynb
-
-Este notebook prepara a base para a etapa de modelagem.
-
-Principais etapas:
-
-- Normalização dos nomes das colunas.
-- Renomeação das variáveis principais.
-- Conversão de colunas numéricas.
-- Criação de variáveis temporais.
-- Remoção de registros sem variável-alvo.
-- Tratamento de valores sentinela.
-- Remoção de valores fisicamente inválidos.
-- Remoção de outliers por IQR.
-- Cálculo de valores nulos.
-- Remoção de colunas com muitos valores ausentes.
-- Imputação de valores nulos com mediana.
-- Geração da base final para modelagem.
-
-A base final é salva em:
-
-```text
-data/processed/weather_sp_preprocessado/
-```
-
-## Modelos Planejados
-
-A próxima etapa do projeto será a modelagem preditiva.
-
-Os modelos previstos são:
-
-- Random Forest Regressor
-- Rede Neural
-- Regressão Linear
-
-## Variável-Alvo
-
-A variável-alvo do projeto é:
-
-```text
-temperatura
-```
-
-Ela representa a temperatura do ar em graus Celsius.
-
-## Features Consideradas
-
-Após o pré-processamento, algumas das variáveis candidatas para modelagem são:
-
-```text
-ano
-mes
-dia
-hora_num
-latitude
-longitude
-height
-temperatura_maxima
-temperatura_minima
-temperatura_orvalho
-umidade
-pressao
-precipitacao
-radiacao
-velocidade_vento
-rajada_vento
-direcao_vento
-```
-
-Essas variáveis podem ser ajustadas nos notebooks de modelagem conforme a necessidade de cada algoritmo.
 
 ## Organização dos Dados
-
-Os dados brutos e processados não devem ser enviados para o GitHub.
-
-Exemplo de configuração no `.gitignore`:
 
 ```gitignore
 data/raw/*
@@ -279,29 +242,17 @@ _SUCCESS
 part-*
 ```
 
-## Resultados Esperados
-
-Ao final do projeto, espera-se obter:
-
-- Uma base meteorológica processada em PySpark.
-- Uma análise exploratória da variação de temperatura ao longo dos anos.
-- Uma base pré-processada para modelagem.
-- Modelos capazes de prever a temperatura do ar com base em variáveis meteorológicas e temporais.
-- Comparação de desempenho entre os modelos utilizados.
-
 ## Status do Projeto
-
-Status atual:
 
 ```text
 [x] Ambiente com Docker e PySpark
 [x] Conversão de CSV para Parquet
-[x] Análise exploratória inicial
-[x] Pré-processamento
-[ ] Modelagem com Random Forest
-[ ] Modelagem com Rede Neural
-[ ] Modelagem com Regressão Linear
-[ ] Avaliação final dos modelos
+[x] Análise exploratória
+[x] Pré-processamento e feature engineering
+[x] Modelagem com Random Forest Regressor
+[x] Modelagem com Linear Regression
+[x] Modelagem com Redes Neurais (MultilayerPerceptronClassifier)
+[x] Avaliação e comparação dos modelos
 [ ] Preparação dos slides
 ```
 
@@ -309,15 +260,9 @@ Status atual:
 
 Projeto desenvolvido para a disciplina de Big Data.
 
-Integrantes:
-
 ```text
 - Ana Lucia de Souza
 - Guilherme Massayuki Yokoda de Moraes
 - Leonardo Rossi de Oliveira
 - Tiago Tavares de Lima Gonçalves
 ```
-
-## Considerações Finais
-
-Este projeto utiliza técnicas de Big Data para processar e analisar dados meteorológicos de grande volume. A escolha do PySpark permite trabalhar com uma base extensa de forma mais eficiente, simulando um fluxo próximo ao utilizado em ambientes reais de engenharia de dados e ciência de dados.
